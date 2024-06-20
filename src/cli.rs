@@ -80,6 +80,8 @@ pub enum Msg {
         #[command(subcommand)]
         action: OutputAction,
     },
+    /// Start continuously receiving events from the compositor.
+    EventStream,
     /// Print the version of the running niri instance.
     Version,
     /// Request an error from the running niri instance.

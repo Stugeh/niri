@@ -305,6 +305,8 @@ pub struct Output {
     pub mode: Option<ConfiguredMode>,
     #[knuffel(child)]
     pub variable_refresh_rate: bool,
+    #[knuffel(child)]
+    pub layout: Option<OutputLayout>,
 }
 
 impl Default for Output {
@@ -317,8 +319,24 @@ impl Default for Output {
             position: None,
             mode: None,
             variable_refresh_rate: false,
+            layout: None,
         }
     }
+}
+
+// We need a separate struct for Outputs because these should set non-configured values to None
+// instead of default values so we don't override layout options set in the base layout with
+// defaults set inside the output layouts.
+#[derive(knuffel::Decode, Debug, Clone, PartialEq)]
+pub struct OutputLayout {
+    #[knuffel(child)]
+    pub default_column_width: Option<DefaultColumnWidth>,
+    #[knuffel(child, unwrap(argument))]
+    pub center_focused_column: Option<CenterFocusedColumn>,
+    #[knuffel(child, unwrap(argument))]
+    pub gaps: Option<FloatOrInt<0, 65535>>,
+    #[knuffel(child)]
+    pub struts: Option<OutputStruts>,
 }
 
 #[derive(knuffel::Decode, Debug, Clone, Copy, PartialEq, Eq)]
@@ -531,6 +549,20 @@ pub struct Struts {
     pub top: FloatOrInt<0, 65535>,
     #[knuffel(child, unwrap(argument), default)]
     pub bottom: FloatOrInt<0, 65535>,
+}
+
+// We need output specific struts sizes to be optional instead of having defaults.
+// Probably not a perfect solution.
+#[derive(knuffel::Decode, Debug, Default, Clone, Copy, PartialEq)]
+pub struct OutputStruts {
+    #[knuffel(child, unwrap(argument))]
+    pub left: Option<FloatOrInt<0, 65535>>,
+    #[knuffel(child, unwrap(argument))]
+    pub right: Option<FloatOrInt<0, 65535>>,
+    #[knuffel(child, unwrap(argument))]
+    pub top: Option<FloatOrInt<0, 65535>>,
+    #[knuffel(child, unwrap(argument))]
+    pub bottom: Option<FloatOrInt<0, 65535>>,
 }
 
 #[derive(knuffel::Decode, Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -2647,6 +2679,7 @@ mod tests {
                         refresh: Some(144.),
                     }),
                     variable_refresh_rate: true,
+                    layout: None,
                 }],
                 layout: Layout {
                     focus_ring: FocusRing {

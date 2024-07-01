@@ -30,11 +30,15 @@
 //! making the primary output their original output.
 
 use std::cmp::min;
+use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
 use std::time::Duration;
 
-use niri_config::{CenterFocusedColumn, Config, FloatOrInt, Struts, Workspace as WorkspaceConfig};
+use niri_config::{
+    CenterFocusedColumn, Config, FloatOrInt, OutputLayout as ConfigOutputLayout, Struts,
+    Workspace as WorkspaceConfig,
+};
 use niri_ipc::SizeChange;
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::element::Id;
@@ -182,7 +186,7 @@ pub trait LayoutElement {
 
 #[derive(Debug)]
 pub struct Layout<W: LayoutElement> {
-    /// Monitors and workspaes in the layout.
+    /// Monitors and workspaces in the layout.
     monitor_set: MonitorSet<W>,
     /// Configurable properties of the layout.
     options: Rc<Options>,
@@ -220,6 +224,9 @@ pub struct Options {
     /// Initial width for new columns.
     pub default_width: Option<ColumnWidth>,
     pub animations: niri_config::Animations,
+
+    // Layout overrides keyed by output name
+    pub output_layouts: Option<HashMap<String, Self>>,
 }
 
 impl Default for Options {
@@ -237,6 +244,7 @@ impl Default for Options {
             ],
             default_width: None,
             animations: Default::default(),
+            output_layouts: Some(HashMap::new()),
         }
     }
 }
@@ -264,7 +272,7 @@ impl Options {
             .map(|w| w.0.map(ColumnWidth::from))
             .unwrap_or(Some(ColumnWidth::Proportion(0.5)));
 
-        Self {
+        let mut layout_options = Self {
             gaps: layout.gaps.0,
             struts: layout.struts,
             focus_ring: layout.focus_ring,
@@ -273,7 +281,47 @@ impl Options {
             preset_widths,
             default_width,
             animations: config.animations.clone(),
+            output_layouts: None,
+        };
+
+        let mut output_layouts: HashMap<String, Options> = HashMap::new();
+        // Create layout structs for separate outputs
+        for output in &config.outputs {
+            if let Some(output_layout) = output.layout.clone() {
+                Self::output_layout_add(&mut output_layouts, &output_layout, &layout_options);
+            }
         }
+
+        if !output_layouts.is_empty() {
+            layout_options.output_layouts = Some(output_layouts);
+        }
+
+        layout_options
+    }
+
+    /// base_layout: User configured+default layout for the top level
+    /// output_layout: configured layout for specific output that's used to override base_layout
+    /// returns: a new output specific layout to a list of output layouts
+    fn output_layout_add(
+        layout_map: &mut HashMap<String, Options>,
+        output_layout: &ConfigOutputLayout,
+        base_layout: &Options,
+    ) {
+        let mut merged_layout = base_layout.clone();
+        // pub default_column_width: Option<DefaultColumnWidth>,
+        // pub center_focused_column: Option<CenterFocusedColumn>,
+        // pub gaps: Option<FloatOrInt<0, 65535>>,
+        // pub struts: Option<OutputStruts>,
+
+        let output_name = output_layout.name.clone();
+
+        // Todo:
+        if let Some(default_colwidth) = output_layout.default_column_width.clone() {}
+        if let Some(focused_column) = output_layout.center_focused_column.clone() {}
+        if let Some(center_focused_column) = output_layout.center_focused_column.clone() {}
+        if let Some(gaps) = output_layout.gaps.clone() {}
+        if let Some(struts) = output_layout.struts.clone() {}
+        layout_map.insert(output_name, merged_layout);
     }
 
     fn adjusted_for_scale(mut self, scale: f64) -> Self {

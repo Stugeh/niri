@@ -329,6 +329,8 @@ impl Default for Output {
 // defaults set inside the output layouts.
 #[derive(knuffel::Decode, Debug, Clone, PartialEq)]
 pub struct OutputLayout {
+    #[knuffel(argument)]
+    pub name: String,
     #[knuffel(child)]
     pub default_column_width: Option<DefaultColumnWidth>,
     #[knuffel(child, unwrap(argument))]

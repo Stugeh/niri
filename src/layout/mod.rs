@@ -35,10 +35,7 @@ use std::mem;
 use std::rc::Rc;
 use std::time::Duration;
 
-use niri_config::{
-    CenterFocusedColumn, Config, FloatOrInt, OutputLayout as ConfigOutputLayout, Struts,
-    Workspace as WorkspaceConfig,
-};
+use niri_config::{CenterFocusedColumn, Config, FloatOrInt, Struts, Workspace as WorkspaceConfig};
 use niri_ipc::SizeChange;
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::element::Id;
@@ -1821,8 +1818,6 @@ impl<W: LayoutElement> Layout<W> {
             return;
         }
 
-        let options = self.options.clone();
-
         match &mut self.monitor_set {
             MonitorSet::Normal {
                 monitors,
@@ -1841,18 +1836,30 @@ impl<W: LayoutElement> Layout<W> {
                     .unwrap_or(*active_monitor_idx);
                 let mon = &mut monitors[mon_idx];
 
+                // Check if there are specified layouts
+                let options = self
+                    .options
+                    .output_layouts
+                    .as_ref()
+                    .and_then(|output_layouts| output_layouts.get(&mon.output.name()).cloned())
+                    .map_or_else(|| self.options.clone(), Rc::new);
+
                 let ws = Workspace::new_with_config(
                     mon.output.clone(),
                     Some(ws_config.clone()),
                     options,
                 );
+
                 mon.workspaces.insert(0, ws);
                 mon.active_workspace_idx += 1;
                 mon.workspace_switch = None;
                 mon.clean_up_workspaces();
             }
             MonitorSet::NoOutputs { workspaces } => {
-                let ws = Workspace::new_with_config_no_outputs(Some(ws_config.clone()), options);
+                let ws = Workspace::new_with_config_no_outputs(
+                    Some(ws_config.clone()),
+                    self.options.clone(),
+                );
                 workspaces.insert(0, ws);
             }
         }

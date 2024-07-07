@@ -304,23 +304,46 @@ impl Options {
     /// returns: a new output specific layout to a list of output layouts
     fn output_layout_add(
         layout_map: &mut HashMap<String, Options>,
-        output_layout: &ConfigOutputLayout,
+        output_layout: &niri_config::OutputLayout,
         base_layout: &Options,
     ) {
         let mut merged_layout = base_layout.clone();
-        // pub default_column_width: Option<DefaultColumnWidth>,
-        // pub center_focused_column: Option<CenterFocusedColumn>,
-        // pub gaps: Option<FloatOrInt<0, 65535>>,
-        // pub struts: Option<OutputStruts>,
-
         let output_name = output_layout.name.clone();
 
-        // Todo:
-        if let Some(default_colwidth) = output_layout.default_column_width.clone() {}
-        if let Some(focused_column) = output_layout.center_focused_column.clone() {}
-        if let Some(center_focused_column) = output_layout.center_focused_column.clone() {}
-        if let Some(gaps) = output_layout.gaps.clone() {}
-        if let Some(struts) = output_layout.struts.clone() {}
+        if output_layout.default_column_width.is_some() {
+            let default_width = output_layout
+                .default_column_width
+                .as_ref()
+                .map(|width| width.0.map(ColumnWidth::from));
+
+            if default_width.is_some() {
+                merged_layout.default_width = default_width.unwrap();
+            }
+        }
+
+        if output_layout.center_focused_column.is_some() {
+            merged_layout.center_focused_column = output_layout.center_focused_column.unwrap();
+        }
+
+        if output_layout.gaps.is_some() {
+            merged_layout.gaps = output_layout.gaps.unwrap().0;
+        }
+
+        if let Some(strut_overrides) = output_layout.struts {
+            if strut_overrides.left.is_some() {
+                merged_layout.struts.left = strut_overrides.left.unwrap()
+            }
+            if strut_overrides.right.is_some() {
+                merged_layout.struts.right = strut_overrides.right.unwrap()
+            }
+            if strut_overrides.top.is_some() {
+                merged_layout.struts.top = strut_overrides.top.unwrap()
+            }
+            if strut_overrides.bottom.is_some() {
+                merged_layout.struts.bottom = strut_overrides.bottom.unwrap()
+            }
+        }
+
         layout_map.insert(output_name, merged_layout);
     }
 
